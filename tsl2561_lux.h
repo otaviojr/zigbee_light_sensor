@@ -1,0 +1,33 @@
+/**
+ * @file   tsl2561_lux.h
+ * @author Otavio Ribeiro
+ * @date   02 Ago 2019
+ * @brief  Calculating lux from both ADC sensors
+ *
+ * Copyright (c) 2019 Otávio Ribeiro <otavio.ribeiro@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ */
+#ifndef __ZB_LIGHT_SENSOR_TSL2561_LUX_H__
+#define __ZB_LIGHT_SENSOR_TSL2561_LUX_H__
+
+uint16_t tsl2561_calculate_lux(uint16_t ch0, uint16_t ch1, char iType);
+
+#endif /* __ZB_LIGHT_SENSOR_TSL2561_LUX_H__ */
