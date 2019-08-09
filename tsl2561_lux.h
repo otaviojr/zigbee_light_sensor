@@ -28,6 +28,6 @@
 #ifndef __ZB_LIGHT_SENSOR_TSL2561_LUX_H__
 #define __ZB_LIGHT_SENSOR_TSL2561_LUX_H__
 
-uint16_t tsl2561_calculate_lux(uint16_t ch0, uint16_t ch1, char iType);
+uint32_t tsl2561_calculate_lux(uint16_t ch0, uint16_t ch1, char iType);
 
 #endif /* __ZB_LIGHT_SENSOR_TSL2561_LUX_H__ */

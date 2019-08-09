@@ -31,10 +31,10 @@
 #include "nrf_log.h"
 #include "tsl2561_lux.h"
 
-uint16_t tsl2561_calculate_lux(uint16_t ch0, uint16_t ch1, char iType)
+uint32_t tsl2561_calculate_lux(uint16_t ch0, uint16_t ch1, char iType)
 {
-	uint16_t lux = 0;
-	float ratio = ch1/ch0;
+	uint32_t lux = 0;
+	float ratio = (float)ch1/(float)ch0;
 
 	switch(iType){
 		case 'T':

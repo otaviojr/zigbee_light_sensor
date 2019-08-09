@@ -328,6 +328,8 @@ static void illuminance_measurement_task(void *pvParam)
 
         /* Get new pressure measured value */
         new_illumination_value = tsl2561_read_lux(&m_twi_master);
+        if(new_illumination_value <= 1) new_illumination_value = 0;
+
         NRF_LOG_INFO("Illumination value is: %ld", new_illumination_value);
 
         if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 1000U) == pdTRUE)
@@ -355,7 +357,7 @@ static void illuminance_measurement_task(void *pvParam)
         }
 
         /* Let the task sleep for some time, consider it as illumination sample period  */
-        vTaskDelayUntil(&last_update_wake_timestamp, pdMS_TO_TICKS(1000U));
+        vTaskDelayUntil(&last_update_wake_timestamp, pdMS_TO_TICKS(5000U));
     }
 }
 
@@ -373,30 +375,14 @@ void zboss_signal_handler(zb_uint8_t param)
 
     switch (sig)
     {
+    	case ZB_BDB_SIGNAL_DEVICE_REBOOT:
         case ZB_BDB_SIGNAL_DEVICE_FIRST_START:
-            NRF_LOG_INFO("First Start");
-            if (status == RET_OK)
-            {
-                NRF_LOG_INFO("Joined network successfully");
-            }
-            else
-            {
+            if (!status == RET_OK) {
                 NRF_LOG_ERROR("Failed to join network. Status: %d", status);
                 comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
                 ZB_COMM_STATUS_CHECK(comm_status);
             }
         	break;
-
-        case ZB_BDB_SIGNAL_DEVICE_REBOOT:
-            if (status == RET_OK)
-            {
-                NRF_LOG_INFO("Joined network successfully");
-            }
-            else
-            {
-                NRF_LOG_ERROR("Failed to join network. Status: %d", status);
-            }
-            break;
 
         case ZB_ZDO_SIGNAL_LEAVE:
             NRF_LOG_INFO("Leaving Zigbee Network");
@@ -431,6 +417,7 @@ void leave_callback(zb_uint8_t param)
 {
   zb_zdo_mgmt_leave_res_t *resp = (zb_zdo_mgmt_leave_res_t *)ZB_BUF_BEGIN(ZB_BUF_FROM_REF(param));
   NRF_LOG_INFO("LEAVE CALLBACK status %d", resp->status);
+  zb_nvram_clear();
 }
 
 static void light_sensor_leave_and_join( zb_uint8_t param ){
@@ -443,20 +430,13 @@ static void light_sensor_leave_and_join( zb_uint8_t param ){
 		req->dst_addr = ZB_PIBCACHE_NETWORK_ADDRESS();
 		req->rejoin = ZB_FALSE;
 
-		UNUSED_RETURN_VALUE(zdo_mgmt_leave_req(param, NULL));
-    } else {
-        zb_bool_t comm_status;
-
-        zb_nvram_clear();
-
-    	comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
-    	ZB_COMM_STATUS_CHECK(comm_status);
+		UNUSED_RETURN_VALUE(zdo_mgmt_leave_req(param, leave_callback));
     }
 }
 
 void zigbee_main_task(void *pvParameter)
 {
-	zb_ret_t 		zb_err_code;
+	//zb_ret_t 		zb_err_code;
     ret_code_t     	err_code;
     UNUSED_PARAMETER(pvParameter);
 
@@ -470,8 +450,7 @@ void zigbee_main_task(void *pvParameter)
     {
     	if(ind_reset_network){
     		ind_reset_network = false;
-    		zb_err_code = ZB_SCHEDULE_ALARM(light_sensor_leave_and_join, 0, ZB_TIME_ONE_SECOND);
-    		ZB_ERROR_CHECK(zb_err_code);
+    		light_sensor_leave_and_join(1);
     	}
 
         if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 5) == pdTRUE)
@@ -504,7 +483,7 @@ static void led_toggle_task(void *pvParameter)
     while (true)
     {
         bsp_board_led_invert(ZIGBEE_NETWORK_STATE_LED);
-        vTaskDelayUntil(&last_led_invert_timestamp, 200U);
+        vTaskDelayUntil(&last_led_invert_timestamp, (ZB_JOINED() ? 5000U : 200U));
     }
 }
 
