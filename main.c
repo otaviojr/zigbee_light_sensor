@@ -92,6 +92,9 @@ static const nrf_drv_twi_t m_twi_master = NRF_DRV_TWI_INSTANCE(MASTER_TWI_INST);
 #define MAX_PRESSURE_VALUE                 1100                                 /**< Maximum pressure value as returned by the simulated measurement function. */
 #define PRESSURE_VALUE_INCREMENT           5                                    /**< Value by which the temperature value is incremented/decremented for each call to the simulated measurement function. */
 
+#define MAX_ILLUMINANCE                    1500
+#define MIN_ILLUMINANCE                    0
+
 #if !defined ZB_ED_ROLE
 #error Define ZB_ED_ROLE to compile End Device source code.
 #endif
@@ -264,8 +267,8 @@ static void light_sensor_clusters_attr_init(void)
 
     /* Illuminance measurement cluster attributes data */
     m_dev_ctx.illum_attr.measure_value			 = ZB_ZCL_ATTR_ILLUMINANCE_MEASUREMENT_MEASURED_VALUE_DEFAULT;
-    m_dev_ctx.illum_attr.min_measure_value		 = ZB_ZCL_ATTR_ILLUMINANCE_MEASUREMENT_MIN_MEASURED_VALUE_MIN_VALUE;
-    m_dev_ctx.illum_attr.max_measure_value		 = ZB_ZCL_ATTR_ILLUMINANCE_MEASUREMENT_MIN_MEASURED_VALUE_MAX_VALUE;
+    m_dev_ctx.illum_attr.min_measure_value		 = MIN_ILLUMINANCE;
+    m_dev_ctx.illum_attr.max_measure_value		 = MAX_ILLUMINANCE;
 }
 
 void bsp_evt_handler(bsp_event_t evt)
@@ -327,20 +330,27 @@ static void illuminance_measurement_task(void *pvParam)
         zb_uint16_t new_illumination_value;
 
         /* Get new pressure measured value */
-        new_illumination_value = tsl2561_read_lux(&m_twi_master);
+        if(tsl2561_read_lux(&m_twi_master, (uint16_t*)&new_illumination_value) != TSL2561_LUX_ERROR_NOERROR){
+          new_illumination_value = MAX_ILLUMINANCE;
+        }
+
+        if(new_illumination_value > MAX_ILLUMINANCE){
+            new_illumination_value = MAX_ILLUMINANCE;
+        }
+
         if(new_illumination_value <= 1) new_illumination_value = 0;
 
         NRF_LOG_INFO("Illumination value is: %ld", new_illumination_value);
 
         if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 1000U) == pdTRUE)
         {
-            /* Set new illuminance value as zcl attribute
-             * NOTE this is not thread-safe and locking is required
-             */
+           /* Set new illuminance value as zcl attribute
+            * NOTE this is not thread-safe and locking is required
+            */
             zcl_status = zb_zcl_set_attr_val(LIGHT_SENSOR_ENDPOINT,
-            								 ZB_ZCL_CLUSTER_ID_ILLUMINANCE_MEASUREMENT,
+	                                     ZB_ZCL_CLUSTER_ID_ILLUMINANCE_MEASUREMENT,
                                              ZB_ZCL_CLUSTER_SERVER_ROLE,
-											 ZB_ZCL_ATTR_ILLUMINANCE_MEASUREMENT_MEASURED_VALUE_ID,
+	                                     ZB_ZCL_ATTR_ILLUMINANCE_MEASUREMENT_MEASURED_VALUE_ID,
                                              (zb_uint8_t *)&new_illumination_value,
                                              ZB_FALSE);
 
@@ -355,7 +365,6 @@ static void illuminance_measurement_task(void *pvParam)
         {
             NRF_LOG_ERROR("Unable to take zigbee_task_mutex from illumination_measurement_task");
         }
-
         /* Let the task sleep for some time, consider it as illumination sample period  */
         vTaskDelayUntil(&last_update_wake_timestamp, pdMS_TO_TICKS(5000U));
     }

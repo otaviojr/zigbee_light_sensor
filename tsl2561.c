@@ -100,13 +100,12 @@ void tsl2561_init(const nrf_drv_twi_t* m_twi_master)
     while(tsl2561_twi_processing == 1);
 }
 
-uint16_t tsl2561_read_lux(const nrf_drv_twi_t* m_twi_master)
+tsl2561_luxerror_t tsl2561_read_lux(const nrf_drv_twi_t* m_twi_master, uint16_t* lux)
 {
-	ret_code_t err_code;
-	uint8_t byte_send[1];
-	uint16_t data0;
-	uint16_t data1;
-	uint32_t lux;
+    ret_code_t err_code;
+    uint8_t byte_send[1];
+    uint16_t data0;
+    uint16_t data1;
 
     tsl2561_twi_processing = 1;
     byte_send[0] = TSL2561_COMMAND | TSL2561_REG_DATA0LOW;
@@ -164,10 +163,10 @@ uint16_t tsl2561_read_lux(const nrf_drv_twi_t* m_twi_master)
     //NRF_LOG_INFO("Illumination value 1 is: 0x%x", data1);
 
     if(data0 == 0xFFFF) {
-	lux = 1159;
-    } else {
-    	lux = tsl2561_calculate_lux(data0, data1, 'T');
+	*lux = 0;
+        return TSL2561_LUX_ERROR_HIGHLUM;
     }
 
-    return lux & 0xFFFF;
+    *lux = tsl2561_calculate_lux(data0, data1, 'T') & 0xFFFF;
+    return TSL2561_LUX_ERROR_NOERROR;
 }
