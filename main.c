@@ -58,12 +58,13 @@
 #include "zb_mem_config_med.h"
 #include "zb_error_handler.h"
 #include "zigbee_helpers.h"
-//#include "app_timer.h"
+#include "app_timer.h"
 #include "bsp.h"
 #include "boards.h"
 
 #include "nrf_assert.h"
 #include "nrf_drv_clock.h"
+#include "nrf_delay.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
@@ -111,7 +112,6 @@ static TaskHandle_t m_illuminance_measurement_task_handle;
 #define LED_TOGGLE_TASK_PRIORITY          (tskIDLE_PRIORITY + 2U)
 static TaskHandle_t m_led_toggle_task_handle;
 
-
 #if (NRF_LOG_ENABLED && NRF_LOG_DEFERRED)
 #define LOG_TASK_STACK_SIZE               (1024U / sizeof(StackType_t))
 #define LOG_TASK_PRIORITY                 (tskIDLE_PRIORITY + 1U)               /**< Must be lower than any task generating logs */
@@ -120,6 +120,11 @@ static TaskHandle_t m_logger_task_handle;
 
 static sensor_device_ctx_t m_dev_ctx;
 
+/* current light sensor sensitivity */
+static tsl2561_sensitivity_t current_sensitivity = TSL2561_SENSITIVITY_HIGH;
+
+/* keep track of how many button has been clicked */
+static uint8_t button_count = 0;
 static volatile bool ind_reset_network = false;
 
 ZB_ZCL_DECLARE_IDENTIFY_ATTR_LIST(identify_attr_list,
@@ -154,12 +159,60 @@ ZB_ZCL_DECLARE_LIGHT_SENSOR_EP(light_sensor_ep,
 
 ZBOSS_DECLARE_DEVICE_CTX_1_EP(light_sensor_ctx, light_sensor_ep);
 
+APP_TIMER_DEF(button_timer);
+
+/**@brief   Callback scheduled from @ref button_timer_handler
+ *
+ * @details This callback does the real job executing the button action. That will depend on the number
+ *          of times that the buttons has been clicked
+ * 
+ * @param param[in]     Parameter passed t ZB_SCHEDULE_CALLBACK, unused in this example (required by API)
+ */
+static void button_handle_cb(zb_uint8_t param)
+{
+    NRF_LOG_INFO("Processing button handle: %d clicks", param);
+    if(param == 10){
+        NRF_LOG_INFO("Factory Reset");
+        ind_reset_network = true;
+    } else if(param == 2){
+        //TODO: save this change on flash to start the sensor right on reboot
+        current_sensitivity = (current_sensitivity == TSL2561_SENSITIVITY_HIGH ? TSL2561_SENSITIVITY_LOW : TSL2561_SENSITIVITY_HIGH);
+        NRF_LOG_INFO("Changing sensor sensitivity to %s", (current_sensitivity == TSL2561_SENSITIVITY_HIGH ? "high" : "low"));
+        tsl2561_sensitivity(&m_twi_master, current_sensitivity);
+    }
+}
+
+/**@brief Function for handling counting how many times the button has been pressed
+ *
+ * @param[in] context   void pointer to context
+ */
+static void button_timer_handler(void * context)
+{
+    ret_code_t error_code;
+    zb_ret_t zb_ret;
+    UNUSED_PARAMETER(context);
+
+    /* Note: ZB_SCHEDULE_CALLBACK is thread safe by exception, conversely to most ZBOSS API */
+    zb_ret = ZB_SCHEDULE_CALLBACK(button_handle_cb, button_count);
+    if (zb_ret != RET_OK)
+    {
+        NRF_LOG_ERROR("Button Handle Lost.");
+    }
+
+    /* reset button count*/
+    button_count = 0;
+
+    /* stop timer */
+    error_code = app_timer_stop(button_timer);
+    APP_ERROR_CHECK(error_code);
+}
+
 /**
  * @brief TWI events handler.
  */
 void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
 {
-	tsl2561_twi_handler(p_event, p_context);
+    tsl2561_twi_handler(p_event, p_context);
 }
 
 /**
@@ -198,14 +251,14 @@ static ret_code_t twi_master_init(void)
  *
  * @details Initializes the timer module. This creates and starts application timers.
  */
-//static void timers_init(void)
-//{
-//    ret_code_t err_code;
+static void timers_init(void)
+{
+    ret_code_t err_code;
 
     // Initialize timer module.
-//    err_code = app_timer_init();
-//    APP_ERROR_CHECK(err_code);
-//}
+    err_code = app_timer_init();
+    APP_ERROR_CHECK(err_code);
+}
 
 /**@brief Function for initializing the nrf log module.
  */
@@ -273,10 +326,14 @@ static void light_sensor_clusters_attr_init(void)
 
 void bsp_evt_handler(bsp_event_t evt)
 {
-	switch (evt)
+    switch (evt)
     {
         case BSP_EVENT_KEY_0:
-        	ind_reset_network = true;
+            /* increase button count and start waiting */
+            button_count ++;
+
+            /* start our timer. This will fail after the second click, but its ok */
+            app_timer_start(button_timer, APP_TIMER_TICKS(5000), NULL);
             break;
 
         default:
@@ -298,13 +355,6 @@ static void board_init(void)
     bsp_board_leds_off();
 }
 
-/**@brief Function for initializing the digital light sensor device.
- */
-static void light_sensor_init(void)
-{
-	//TODO: init light sensor device
-}
-
 /**@brief  Task performing illuminance measurement.
  *
  * @param pvParam  Not used, required by freertos api
@@ -320,6 +370,7 @@ static void illuminance_measurement_task(void *pvParam)
     if(signature == 0x50){
         NRF_LOG_INFO("Digital Light Sensor TSL2561 found! Initializing...");
         tsl2561_init(&m_twi_master);
+        tsl2561_sensitivity(&m_twi_master, current_sensitivity);
     } else  {
         NRF_LOG_ERROR("Digital Light Sensor TSL2561 not found!");
     }
@@ -555,6 +606,7 @@ zb_void_t zb_osif_go_idle(zb_void_t)
  */
 int main(void)
 {
+    ret_code_t error_code;
     zb_ieee_addr_t ieee_addr;
 
     /* Initialize logging system and GPIOs. */
@@ -563,8 +615,7 @@ int main(void)
     NRF_LOG_FINAL_FLUSH();
 
     clock_init();
-    //timers_init();
-    light_sensor_init();
+    timers_init();
     board_init();
     twi_master_init();
 
@@ -635,6 +686,11 @@ int main(void)
     {
         APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
     }
+
+   /* Create Timer for executing button action */
+    error_code = app_timer_create(&button_timer, APP_TIMER_MODE_REPEATED, button_timer_handler);
+    APP_ERROR_CHECK(error_code);
+
 
     /* Start FreeRTOS scheduler. */
     NRF_LOG_INFO("Starting FreeRTOS scheduler");

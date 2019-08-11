@@ -55,7 +55,14 @@ typedef enum _tsl2561_luxerror {
     TSL2561_LUX_ERROR_LOWLUM = 0x02
 } tsl2561_luxerror_t;
 
+typedef enum _tsl2561_sensitivity {
+    TSL2561_SENSITIVITY_HIGH = 0x01,
+    TSL2561_SENSITIVITY_LOW = 0x02
+} tsl2561_sensitivity_t;
+
 void tsl2561_twi_handler(nrf_drv_twi_evt_t const *, void *);
+
+void tsl2561_sensitivity(const nrf_drv_twi_t* m_twi_master, tsl2561_sensitivity_t sens);
 
 void tsl2561_init(const nrf_drv_twi_t* m_twi_master);
 uint8_t tsl2561_read_id(nrf_drv_twi_t const *);
