@@ -47,7 +47,7 @@ The number of clicks will define which action have to be executed.
 The LED will blink 3 times faster, then it will blink 1, 2 or 3 times slow, this is the sensitivity level, then, it will blink more 3 times faster.
 * 3 clicks - Blink the LED to show the current light sensor sensitivity\
 The LED will blink 3 times faster, then it will blink 1, 2 or 3 times slow, this is the sensitivity level, then, it will blink more 3 times faster.
-* 10 links - Factory Reset. Allow the sensor to join on a new network
+* 10 clicks - Factory Reset. Allow the sensor to join on a new network
 
 ## Light Sensor Sensitivity Level
 
