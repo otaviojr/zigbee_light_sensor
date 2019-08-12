@@ -9,7 +9,7 @@ I'm considering to expands it to another boards in the future.
 
 Anyway, porting it to any other nrf52840 board should not be a big deal.
 
-## Material
+## Materials
 
 1. [SparkFun Pro nRF52840 mini](https://www.sparkfun.com/products/15025?_ga=2.111855680.592339865.1564452186-1575453690.1551457345)
 2. [SeeedStudio Digital Light Sensor](https://www.seeedstudio.io/s/Grove-Digital-Light-Sensor-p-1281.html)
