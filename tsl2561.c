@@ -87,23 +87,39 @@ void tsl2561_sensitivity(const nrf_drv_twi_t* m_twi_master, tsl2561_sensitivity_
 
     tsl2561_twi_processing = 1;
     byte_send[0] = TSL2561_COMMAND | TSL2561_REG_TIMMING;
-    if(sens == TSL2561_SENSITIVITY_HIGH){
-        /**
-         * GAIN => (1) 16x high gain
-         * MANUAL => (0)
-         * RESERV => (0)
-         * INTEG => (10) 402ms
-         */
-        byte_send[1] = 0x12;
-    } else {
-        /**
-         * GAIN => (0) 1x low gain
-         * MANUAL => (0)
-         * RESERV => (0)
-         * INTEG => (10) 402ms
-         */
-        byte_send[1] = 0x2;
+    switch(sens){
+        case TSL2561_SENSITIVITY_LOW:
+            /**
+             * GAIN => (0) 1x low gain
+             * MANUAL => (0)
+             * RESERV => (0)
+             * INTEG => (10) 402ms
+             */
+            byte_send[1] = 0x2;
+            break;
+
+        case TSL2561_SENSITIVITY_MEDIUM:
+            /**
+             * GAIN => (1) 16x high gain
+             * MANUAL => (0)
+             * RESERV => (0)
+             * INTEG => (00) 13.7ms
+             */
+            byte_send[1] = 0x10;
+    	    break;
+
+        case TSL2561_SENSITIVITY_HIGH:
+        default:
+            /**
+             * GAIN => (1) 16x high gain
+             * MANUAL => (0)
+             * RESERV => (0)
+             * INTEG => (10) 402ms
+             */
+            byte_send[1] = 0x12;
+    	    break;
     }
+
     err_code = nrf_drv_twi_tx(m_twi_master, TSL2561_ADDR, byte_send, 2, true);
     APP_ERROR_CHECK(err_code);
     while(tsl2561_twi_processing == 1);

@@ -161,6 +161,52 @@ ZBOSS_DECLARE_DEVICE_CTX_1_EP(light_sensor_ctx, light_sensor_ep);
 
 APP_TIMER_DEF(button_timer);
 
+static void blink_sensitivity(){
+    bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_on(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_on(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_on(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+
+	/**
+     * blink led "current_sensitivity" times
+     *
+     * 1 - low
+     * 2 - medium
+     * 3 - high
+     *
+     * */
+    bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(1000);
+
+    for(int i = 0; i < current_sensitivity; i++){
+    	bsp_board_led_on(ZIGBEE_NETWORK_STATE_LED);
+    	nrf_delay_ms(500);
+        bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+    	nrf_delay_ms(500);
+    }
+
+    nrf_delay_ms(500);
+    bsp_board_led_on(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_on(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_on(ZIGBEE_NETWORK_STATE_LED);
+	nrf_delay_ms(100);
+    bsp_board_led_off(ZIGBEE_NETWORK_STATE_LED);
+}
+
 /**@brief   Callback scheduled from @ref button_timer_handler
  *
  * @details This callback does the real job executing the button action. That will depend on the number
@@ -176,9 +222,13 @@ static void button_handle_cb(zb_uint8_t param)
         ind_reset_network = true;
     } else if(param == 2){
         //TODO: save this change on flash to start the sensor right on reboot
-        current_sensitivity = (current_sensitivity == TSL2561_SENSITIVITY_HIGH ? TSL2561_SENSITIVITY_LOW : TSL2561_SENSITIVITY_HIGH);
-        NRF_LOG_INFO("Changing sensor sensitivity to %s", (current_sensitivity == TSL2561_SENSITIVITY_HIGH ? "high" : "low"));
+    	if(++current_sensitivity > TSL2561_SENSITIVITY_HIGH) current_sensitivity = TSL2561_SENSITIVITY_LOW;
+        NRF_LOG_INFO("Changing sensor sensitivity to %s", (current_sensitivity == TSL2561_SENSITIVITY_HIGH ? "high" : (current_sensitivity == TSL2561_SENSITIVITY_MEDIUM ? "medium" : "low")));
         tsl2561_sensitivity(&m_twi_master, current_sensitivity);
+        blink_sensitivity();
+    } else if(param == 3){
+    	/* just use the led to shows the current  sensitivity level */
+    	blink_sensitivity();
     }
 }
 
