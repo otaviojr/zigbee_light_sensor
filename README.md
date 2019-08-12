@@ -7,6 +7,8 @@ https://www.sparkfun.com/products/15025
 
 But I'm considering to expands it to another boards in the future.
 
+Anyway, porting it to any other nrf52840 board should not be a big deal.
+
 # Compiling and Flashing
 
 1. Download Nordic nRF5 SDK\
