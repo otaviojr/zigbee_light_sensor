@@ -9,7 +9,8 @@ But I'm considering to expands it to another boards in the future.
 
 # Compiling and Flashing
 
-1. Download Nordic nRF5 SDK (https://www.nordicsemi.com/Software-and-Tools/Software/nRF5-SDK-for-Thread-and-Zigbee)
+1. Download Nordic nRF5 SDK\
+https://www.nordicsemi.com/Software-and-Tools/Software/nRF5-SDK-for-Thread-and-Zigbee
 2. Create a projects folder inside SDK. At the same level that the example folder
 3. Clone this repo inside the projects folder
 ```
