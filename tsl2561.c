@@ -1,4 +1,3 @@
-
 /**
  * @file   tsl2561.c
  * @author Otavio Ribeiro
@@ -141,6 +140,9 @@ void tsl2561_init(const nrf_drv_twi_t* m_twi_master)
     while(tsl2561_twi_processing == 1);
 }
 
+/**
+ * @brief Function for reading the last conversion
+ */
 tsl2561_luxerror_t tsl2561_read_lux(const nrf_drv_twi_t* m_twi_master, uint16_t* lux)
 {
     ret_code_t err_code;
@@ -204,7 +206,7 @@ tsl2561_luxerror_t tsl2561_read_lux(const nrf_drv_twi_t* m_twi_master, uint16_t*
     //NRF_LOG_INFO("Illumination value 1 is: 0x%x", data1);
 
     if(data0 == 0xFFFF) {
-	*lux = 0;
+	    *lux = 0;
         return TSL2561_LUX_ERROR_HIGHLUM;
     }
 
