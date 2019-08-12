@@ -44,8 +44,8 @@ Sinse SparkFun Pro nRF52840 Mini has only one button,again, I will need to use i
 The number of clicks will define which action have to be executed.
 
 * 2 clicks - Change light sensor sensitivity
-The LED will blink 3 times faster, then it will blink 1, 2 or 3 times slow, then, it will blink more 3 times faster. The slow blinks will indicate the current level of sensibility.
-
+The LED will blink 3 times faster, then it will blink 1, 2 or 3 times slow, then, it will blink more 3 times faster. The slow blinks will indicate the current level of sensibility.\
+\
 1. Low Sensitivity
 2. Medium Sensitivity
 3. High Sensitivity
