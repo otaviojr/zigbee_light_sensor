@@ -2,7 +2,7 @@
 
 This code is designed to run on a Nordic Semiconductor's nrf52840. 
 
-Actually it was designed to run on SparkFun Pro nRF52840 Mini.
+Actually it was designed to run on SparkFun Pro nRF52840 Mini.\
 https://www.sparkfun.com/products/15025
 
 But I'm considering to expands it to another boards in the future.
