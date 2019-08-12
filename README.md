@@ -37,13 +37,19 @@ Sinse SparkFun Pro nRF52840 Mini has only one LED I will try to use it for every
 
 Initialy the blue LED will blink fast to indicate that the node is trying to join a network. After the node joins a network the blue LED will blink slowly.
 
-## Button
+## Buttons
 
 Sinse SparkFun Pro nRF52840 Mini has only one button,again, I will need to use it for everything.
 
 The number of clicks will define which action have to be executed.
 
 * 2 clicks - Change light sensor sensitivity
+The LED will blink 3 times faster, then it will blink 1, 2 or 3 times slow, then, it will blink more 3 times faster. The slow blinks will indicate the current level of sensibility.
+
+1. Low Sensitivity
+2. Medium Sensitivity
+3. High Sensitivity
+
 * 3 clicks - Blink the LED to show the current light sensor sensitivity
 * 10 links - Factory Reset. Allow the sensor to join on a new network
 
