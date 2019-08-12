@@ -39,7 +39,7 @@ Initialy the blue LED will blink fast to indicate that the node is trying to joi
 
 ## Buttons
 
-Since SparkFun Pro nRF52840 Mini has only one button,again, I will need to use it for everything.
+Since SparkFun Pro nRF52840 Mini has only one button, again, I will need to use it for everything.
 
 The number of clicks will define which action have to be executed.
 
