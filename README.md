@@ -26,7 +26,7 @@ $ git clone https://github.com/otaviojr/zigbee_light_sensor.git .
 $ cd zigbee_light_sensor/sparkfun/blank/armgcc
 $ make
 ```
-4. To flash, click twice the reset button and than:
+4. To flash, click the reset button twice and than:
 
 ```
 $ make bootload SERIAL_PORT=/dev/ttyACM0 
