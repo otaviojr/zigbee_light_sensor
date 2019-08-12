@@ -9,13 +9,13 @@ I'm considering to expands it to another boards in the future.
 
 Anyway, porting it to any other nrf52840 board should not be a big deal.
 
-# Material
+## Material
 
 1. [SparkFun Pro nRF52840 mini](https://www.sparkfun.com/products/15025?_ga=2.111855680.592339865.1564452186-1575453690.1551457345)
 2. [SeeedStudio Digital Light Sensor](https://www.seeedstudio.io/s/Grove-Digital-Light-Sensor-p-1281.html)
 3. [Qwiic Grove Cable Adapter](https://www.sparkfun.com/products/15109)
 
-# Compiling and Flashing
+## Compiling and Flashing
 
 1. Download Nordic nRF5 SDK\
 https://www.nordicsemi.com/Software-and-Tools/Software/nRF5-SDK-for-Thread-and-Zigbee
