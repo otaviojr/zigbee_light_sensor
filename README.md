@@ -31,3 +31,19 @@ $ make
 ```
 $ make bootload SERIAL_PORT=/dev/ttyACM0 
 ```
+## LEDs
+
+Sinse SparkFun Pro nRF52840 Mini has only one LED I will try to use it for everything.
+
+Initialy the blue LED will blink fast to indicate that the node is trying to join a network. After the node joins a network the blue LED will blink slowly.
+
+## Button
+
+Sinse SparkFun Pro nRF52840 Mini has only one button,again, I will need to use it for everything.
+
+The number of clicks will define which action have to be executed.
+
+* 2 clicks - Change light sensor sensitivity
+* 3 clicks - Blink the LED to show the current light sensor sensitivity
+* 10 links - Factory Reset. Allow the sensor to join on a new network
+
