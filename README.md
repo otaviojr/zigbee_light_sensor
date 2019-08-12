@@ -51,6 +51,9 @@ The LED will blink 3 times faster, then it will blink 1, 2 or 3 times slow, this
 
 ## Light Sensor Sensitivity Level
 
-1. Low Sensitivity
-2. Medium Sensitivity
-3. High Sensitivity
+1. Low Sensitivity\
+(1x/402ms)
+2. Medium Sensitivity\
+(16x/101ms)
+3. High Sensitivity\
+(16x/402ms)

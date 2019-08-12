@@ -103,9 +103,9 @@ void tsl2561_sensitivity(const nrf_drv_twi_t* m_twi_master, tsl2561_sensitivity_
              * GAIN => (1) 16x high gain
              * MANUAL => (0)
              * RESERV => (0)
-             * INTEG => (00) 13.7ms
+             * INTEG => (01) 101ms
              */
-            byte_send[1] = 0x10;
+            byte_send[1] = 0x11;
     	    break;
 
         case TSL2561_SENSITIVITY_HIGH:
