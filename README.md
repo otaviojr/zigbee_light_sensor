@@ -54,7 +54,7 @@ The LED will blink 3 times faster, then it will blink 1, 2 or 3 times slow, this
 1. Low Sensitivity\
 (1x/402ms)
 2. Medium Sensitivity\
-(16x/101ms)\
-**Is not working the way I want it to work, use the high and  low  sensitivity for now**
+**Is not working the way I want it to work, use the high and  low  sensitivity for now**\
+(16x/101ms)
 3. High Sensitivity\
 (16x/402ms)
