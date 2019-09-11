@@ -1,6 +1,6 @@
 # Zigbee Light Sensor
 
-This code is designed to run on a Nordic Semiconductor's nrf52840. 
+This code is designed to run on a Nordic Semiconductor's nrf52840.
 
 Actually it was designed to run on SparkFun Pro nRF52840 Mini.
 
@@ -19,6 +19,9 @@ Anyway, porting it to any other nrf52840 board should not be a big deal.
 1. Download Nordic nRF5 SDK\
 https://www.nordicsemi.com/Software-and-Tools/Software/nRF5-SDK-for-Thread-and-Zigbee
 2. Create a projects folder inside the SDK root dir, at the same level that the example folder is.
+```
+$ mkdir <nRF SDK root>/projects
+```
 3. Clone this repo inside the projects folder we just created
 ```
 $ cd <nRF SDK root>/projects
@@ -29,7 +32,7 @@ $ make
 4. To flash, click the reset button twice and than:
 
 ```
-$ make bootload SERIAL_PORT=/dev/ttyACM0 
+$ make bootload SERIAL_PORT=/dev/ttyACM0
 ```
 ## LEDs
 

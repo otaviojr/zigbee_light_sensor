@@ -211,16 +211,13 @@ static void blink_sensitivity(){
  *
  * @details This callback does the real job executing the button action. That will depend on the number
  *          of times that the buttons has been clicked
- * 
- * @param param[in]     Parameter passed t ZB_SCHEDULE_CALLBACK, unused in this example (required by API)
+ *
+ * @param param[in]     Parameter passed t ZB_SCHEDULE_CALLBACK, unused here.
  */
 static void button_handle_cb(zb_uint8_t param)
 {
     NRF_LOG_INFO("Processing button handle: %d clicks", param);
-    if(param == 10){
-        NRF_LOG_INFO("Factory Reset");
-        ind_reset_network = true;
-    } else if(param == 2){
+    if(param == 2){
         //TODO: save this change on flash to start the sensor right on reboot
     	if(++current_sensitivity > TSL2561_SENSITIVITY_HIGH) current_sensitivity = TSL2561_SENSITIVITY_LOW;
         NRF_LOG_INFO("Changing sensor sensitivity to %s", (current_sensitivity == TSL2561_SENSITIVITY_HIGH ? "high" : (current_sensitivity == TSL2561_SENSITIVITY_MEDIUM ? "medium" : "low")));
@@ -229,6 +226,9 @@ static void button_handle_cb(zb_uint8_t param)
     } else if(param == 3){
     	/* just use the led to shows the current  sensitivity level */
     	blink_sensitivity();
+    } else if(param == 10){
+      NRF_LOG_INFO("Factory Reset");
+      ind_reset_network = true;
     }
 }
 
@@ -432,7 +432,7 @@ static void illuminance_measurement_task(void *pvParam)
 
         /* Get new pressure measured value */
         if(tsl2561_read_lux(&m_twi_master, (uint16_t*)&new_illumination_value) != TSL2561_LUX_ERROR_NOERROR){
-          new_illumination_value = MAX_ILLUMINANCE;
+            new_illumination_value = MAX_ILLUMINANCE;
         }
 
         if(new_illumination_value > MAX_ILLUMINANCE){
@@ -471,17 +471,27 @@ static void illuminance_measurement_task(void *pvParam)
     }
 }
 
+static void light_sensor_leave_and_join( zb_uint8_t param )
+{
+    zb_bdb_reset_via_local_action(param);
+}
 
+static zb_void_t device_join(zb_uint8_t param)
+{
+    zb_bool_t comm_status;
+    comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
+    ZB_COMM_STATUS_CHECK(comm_status);
+}
 /**@brief ZigBee stack event handler.
  *
  * @param[in] param     Reference to ZigBee stack buffer used to pass arguments (signal).
  */
 void zboss_signal_handler(zb_uint8_t param)
 {
-    zb_bool_t comm_status;
     zb_zdo_app_signal_hdr_t  * p_sg_p      = NULL;
     zb_zdo_app_signal_type_t   sig         = zb_get_app_signal(param, &p_sg_p);
     zb_ret_t                   status      = ZB_GET_APP_SIGNAL_STATUS(param);
+    zb_ret_t                   zb_err_code;
 
     switch (sig)
     {
@@ -489,13 +499,16 @@ void zboss_signal_handler(zb_uint8_t param)
         case ZB_BDB_SIGNAL_DEVICE_FIRST_START:
             if (!status == RET_OK) {
                 NRF_LOG_ERROR("Failed to join network. Status: %d", status);
-                comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
-                ZB_COMM_STATUS_CHECK(comm_status);
+
+                zb_err_code = ZB_SCHEDULE_ALARM(device_join, 0, ZB_TIME_ONE_SECOND);
+                ZB_ERROR_CHECK(zb_err_code);
             }
         	break;
 
         case ZB_ZDO_SIGNAL_LEAVE:
             NRF_LOG_INFO("Leaving Zigbee Network");
+            zb_err_code = ZB_SCHEDULE_ALARM(device_join, 0, ZB_TIME_ONE_SECOND);
+            ZB_ERROR_CHECK(zb_err_code);
         	break;
 
         case ZB_COMMON_SIGNAL_CAN_SLEEP:
@@ -523,27 +536,6 @@ void zboss_signal_handler(zb_uint8_t param)
     }
 }
 
-void leave_callback(zb_uint8_t param)
-{
-  zb_zdo_mgmt_leave_res_t *resp = (zb_zdo_mgmt_leave_res_t *)ZB_BUF_BEGIN(ZB_BUF_FROM_REF(param));
-  NRF_LOG_INFO("LEAVE CALLBACK status %d", resp->status);
-  zb_nvram_clear();
-}
-
-static void light_sensor_leave_and_join( zb_uint8_t param ){
-    if (ZB_JOINED())
-    {
-		zb_buf_t *buf = ZB_BUF_FROM_REF(param);
-		zb_zdo_mgmt_leave_param_t *req = ZB_GET_BUF_PARAM(buf, zb_zdo_mgmt_leave_param_t);
-
-		UNUSED_RETURN_VALUE(ZB_BZERO(req, sizeof(zb_zdo_mgmt_leave_param_t)));
-		req->dst_addr = ZB_PIBCACHE_NETWORK_ADDRESS();
-		req->rejoin = ZB_FALSE;
-
-		UNUSED_RETURN_VALUE(zdo_mgmt_leave_req(param, leave_callback));
-    }
-}
-
 void zigbee_main_task(void *pvParameter)
 {
 	//zb_ret_t 		zb_err_code;
@@ -552,27 +544,23 @@ void zigbee_main_task(void *pvParameter)
 
     NRF_LOG_INFO("The zigbee_main_task started.");
 
-   /* Start Zigbee Stack. */
+    /* Start Zigbee Stack. */
     err_code = zboss_start();
     ZB_ERROR_CHECK(err_code);
 
-    while (true)
-    {
-    	if(ind_reset_network){
-    		ind_reset_network = false;
-    		light_sensor_leave_and_join(1);
-    	}
+    while (true){
+        if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 5) == pdTRUE){
+            if(ind_reset_network){
+                ind_reset_network = false;
+                light_sensor_leave_and_join(0);
+            }
 
-        if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 5) == pdTRUE)
-        {
             zboss_main_loop_iteration();
-
             UNUSED_RETURN_VALUE(xSemaphoreGiveRecursive(m_zigbee_main_task_mutex));
         }
         vTaskDelay(1);
     }
 }
-
 
 /**@brief  Task function responsible for led blinking
  *
