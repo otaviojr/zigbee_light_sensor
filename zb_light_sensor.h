@@ -78,8 +78,8 @@ typedef struct zb_zcl_illuminance_measurement_attr {
 /* Main application customizable context. Stores all settings and static values. */
 typedef struct
 {
-    zb_zcl_basic_attrs_ext_t            		basic_attr;
-    zb_zcl_identify_attrs_t             		identify_attr;
+    zb_zcl_basic_attrs_ext_t            				basic_attr;
+    zb_zcl_identify_attrs_t             				identify_attr;
     zb_zcl_illuminance_measurement_attr_t     	illum_attr;
 } sensor_device_ctx_t;
 
@@ -97,9 +97,9 @@ typedef struct
  */
 #define ZB_DECLARE_LIGHT_SENSOR_CLUSTER_LIST(                       \
       cluster_list_name,                                            \
-      basic_attr_list,                                              \
       identify_attr_list,                                           \
-	  illum_measure_attr_list)                                      \
+      basic_attr_list,                                              \
+	    illum_measure_attr_list)                                      \
       zb_zcl_cluster_desc_t cluster_list_name[] =                   \
       {                                                             \
         ZB_ZCL_CLUSTER_DESC(                                        \
@@ -133,7 +133,7 @@ typedef struct
       }
 
 /** @brief Declares simple descriptor for the "Device_name" device.
- *  
+ *
  *  @param ep_name          Endpoint variable name.
  *  @param ep_id            Endpoint ID.
  *  @param in_clust_num     Number of the supported input clusters.
@@ -145,21 +145,21 @@ typedef struct
   {                                                                                   \
     ep_id,                                                                            \
     ZB_AF_HA_PROFILE_ID,                                                              \
-	ZB_HA_SIMPLE_SENSOR_DEVICE_ID,                                                    \
+		ZB_HA_CUSTOM_ATTR_DEVICE_ID,                                                                                \
     ZB_DEVICE_VER_LIGHT_SENSOR,                                                       \
     0,                                                                                \
     in_clust_num,                                                                     \
     out_clust_num,                                                                    \
     {                                                                                 \
-      ZB_ZCL_CLUSTER_ID_BASIC,                                                        \
       ZB_ZCL_CLUSTER_ID_IDENTIFY,                                                     \
+      ZB_ZCL_CLUSTER_ID_BASIC,                                                        \
       ZB_ZCL_CLUSTER_ID_ILLUMINANCE_MEASUREMENT,                                      \
       ZB_ZCL_CLUSTER_ID_IDENTIFY,                                                     \
     }                                                                                 \
   }
 
 /** @brief Declares endpoint for the light sensor device.
- *   
+ *
  *  @param ep_name          Endpoint variable name.
  *  @param ep_id            Endpoint ID.
  *  @param cluster_list     Endpoint cluster list.

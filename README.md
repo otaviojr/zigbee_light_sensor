@@ -14,6 +14,10 @@ Anyway, porting it to any other nrf52840 board should not be a big deal.
 2. [SeeedStudio Digital Light Sensor](https://www.seeedstudio.io/s/Grove-Digital-Light-Sensor-p-1281.html)
 3. [Qwiic Grove Cable Adapter](https://www.sparkfun.com/products/15109)
 
+## Preparing
+
+1. Download and Install nrfutil (linux)
+
 ## Compiling and Flashing
 
 1. Download Nordic nRF5 SDK\

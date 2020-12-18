@@ -29,12 +29,12 @@ SRC_FILES += \
   $(SDK_ROOT)/external/freertos/source/tasks.c \
   $(SDK_ROOT)/external/freertos/source/timers.c \
   $(SDK_ROOT)/external/zboss/zb_error/zb_error_to_string.c \
-  $(SDK_ROOT)/external/zboss/osif/zb_nrf52840_common.c \
-  $(SDK_ROOT)/external/zboss/osif/zb_nrf52840_nrf_logger.c \
-  $(SDK_ROOT)/external/zboss/osif/zb_nrf52840_nvram.c \
-  $(SDK_ROOT)/external/zboss/osif/zb_nrf52840_ota.c \
-  $(SDK_ROOT)/external/zboss/osif/zb_nrf52840_sdk_config_deps.c \
-  $(SDK_ROOT)/external/zboss/osif/zb_nrf52840_timer.c \
+  $(SDK_ROOT)/external/zboss/osif/zb_nrf52_common.c \
+  $(SDK_ROOT)/external/zboss/osif/zb_nrf52_nrf_logger.c \
+  $(SDK_ROOT)/external/zboss/osif/zb_nrf52_nvram.c \
+  $(SDK_ROOT)/external/zboss/osif/zb_nrf52_sdk_config_deps.c \
+  $(SDK_ROOT)/external/zboss/osif/zb_nrf52_timer.c \
+  $(SDK_ROOT)/external/zboss/osif/zb_nrf52_transceiver.c \
   $(SDK_ROOT)/external/zboss/addons/zcl/zb_zcl_common_addons.c \
   $(SDK_ROOT)/external/zboss/addons/zcl/zb_zcl_ota_upgrade_addons.c \
   $(SDK_ROOT)/components/libraries/button/app_button.c \
@@ -98,6 +98,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/atomic \
   $(SDK_ROOT)/external/freertos/portable/CMSIS/nrf52 \
   $(SDK_ROOT)/external/nRF-IEEE-802.15.4-radio-driver/src \
+  $(SDK_ROOT)/external/nRF-IEEE-802.15.4-radio-driver/src/fem/none \
   $(SDK_ROOT)/external/zboss/include/ha \
   $(SDK_ROOT)/external/freertos/portable/GCC/nrf52 \
   $(SDK_ROOT)/components/zigbee/pressure_cluster \
@@ -141,8 +142,9 @@ INC_FOLDERS += \
 
 # Libraries common to all targets
 LIB_FILES += \
-  $(SDK_ROOT)/external/zboss/lib/gcc/libzboss.ed.a \
-  $(SDK_ROOT)/external/zboss/lib/gcc/nrf_radio_driver.a \
+  $(SDK_ROOT)/external/zboss/lib/gcc/libzboss.a \
+  $(SDK_ROOT)/external/zboss/lib/gcc/nrf52840/nrf_radio_driver.a \
+	#	$(SDK_ROOT)/external/zboss/lib/gcc/libzboss.ed.a
 
 # Optimization flags
 OPT = -Os -ggdb3
@@ -153,11 +155,11 @@ OPT = -Os -ggdb3
 CFLAGS += $(OPT)
 CFLAGS += -DBOARD_SPARKFUN_NRF52840_MINI
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
-CFLAGS += -DENABLE_FEM
+#CFLAGS += -DENABLE_FEM
 CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DFREERTOS
 CFLAGS += -DNRF52840_XXAA
-CFLAGS += -DZB_ED_ROLE
+#CFLAGS += -DZB_ED_ROLE
 CFLAGS += -DZB_TRACE_LEVEL=0
 CFLAGS += -DZB_TRACE_MASK=0x0858
 CFLAGS += -mcpu=cortex-m4
@@ -177,11 +179,11 @@ ASMFLAGS += -mthumb -mabi=aapcs
 ASMFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 ASMFLAGS += -DBOARD_SPARKFUN_NRF52840_MINI
 ASMFLAGS += -DCONFIG_GPIO_AS_PINRESET
-ASMFLAGS += -DENABLE_FEM
+#ASMFLAGS += -DENABLE_FEM
 ASMFLAGS += -DFLOAT_ABI_HARD
 ASMFLAGS += -DFREERTOS
 ASMFLAGS += -DNRF52840_XXAA
-ASMFLAGS += -DZB_ED_ROLE
+#ASMFLAGS += -DZB_ED_ROLE
 ASMFLAGS += -DZB_TRACE_LEVEL=0
 ASMFLAGS += -DZB_TRACE_MASK=0x0858
 
@@ -247,4 +249,3 @@ dfu-package: $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex
 bootload: $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex dfu-package
 	@echo Flashing: $<
 	adafruit-nrfutil --verbose dfu serial --package _build/dfu-package.zip -p $(SERIAL_PORT) -b 115200 --singlebank --touch 1200
-

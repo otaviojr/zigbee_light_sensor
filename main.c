@@ -80,24 +80,18 @@
  */
 static const nrf_drv_twi_t m_twi_master = NRF_DRV_TWI_INSTANCE(MASTER_TWI_INST);
 
-#define IEEE_CHANNEL_MASK                  0x7FFF800		                    /**< Scan only one, predefined channel to find the coordinator. */
+#define MAX_CHILDREN                       10
+#define IEEE_CHANNEL_MASK                  0x7FFF800		                        /**< Scan all channel to find the coordinator. */
 #define ERASE_PERSISTENT_CONFIG            ZB_FALSE                             /**< Do not erase NVRAM to save the network parameters after device reboot or power-off. */
 
 #define ZIGBEE_NETWORK_STATE_LED           BSP_BOARD_LED_0                      /**< Joined, Joing, Failed Join */
-#define ZIGBEE_NETWORK_COMMISSIONING_BTN   BSP_BUTTON_0                   		/**< Joined, Joing, Failed Join */
-
-#define MIN_TEMPERATURE_VALUE              0                                    /**< Minimum temperature value as returned by the simulated measurement function. */
-#define MAX_TEMPERATURE_VALUE              4000                                 /**< Maximum temperature value as returned by the simulated measurement function. */
-#define TEMPERATURE_VALUE_INCREMENT        50                                   /**< Value by which the temperature value is incremented/decremented for each call to the simulated measurement function. */
-#define MIN_PRESSURE_VALUE                 700                                  /**< Minimum pressure value as returned by the simulated measurement function. */
-#define MAX_PRESSURE_VALUE                 1100                                 /**< Maximum pressure value as returned by the simulated measurement function. */
-#define PRESSURE_VALUE_INCREMENT           5                                    /**< Value by which the temperature value is incremented/decremented for each call to the simulated measurement function. */
+#define ZIGBEE_NETWORK_COMMISSIONING_BTN   BSP_BUTTON_0                   		  /**< Joined, Joing, Failed Join */
 
 #define MAX_ILLUMINANCE                    1500
 #define MIN_ILLUMINANCE                    0
 
-#if !defined ZB_ED_ROLE
-#error Define ZB_ED_ROLE to compile End Device source code.
+#if !defined ZB_ROUTER_ROLE
+#error Define ZB_ROUTER_ROLE to compile light bulb (Router) source code.
 #endif
 
 #define ZIGBEE_MAIN_TASK_PRIORITY               (tskIDLE_PRIORITY + 2U)
@@ -149,8 +143,8 @@ ZB_ZCL_DECLARE_ILLUMINANCE_MEASUREMENT_ATTRIB_LIST(illum_measure_attr_list,
                                             &m_dev_ctx.illum_attr.max_measure_value);
 
 ZB_DECLARE_LIGHT_SENSOR_CLUSTER_LIST(light_sensor_clusters,
-                                     basic_attr_list,
                                      identify_attr_list,
+                                     basic_attr_list,
                                      illum_measure_attr_list);
 
 ZB_ZCL_DECLARE_LIGHT_SENSOR_EP(light_sensor_ep,
@@ -212,9 +206,9 @@ static void blink_sensitivity(){
  * @details This callback does the real job executing the button action. That will depend on the number
  *          of times that the buttons has been clicked
  *
- * @param param[in]     Parameter passed t ZB_SCHEDULE_CALLBACK, unused here.
+ * @param param[in]     Parameter passed t ZB_SCHEDULE_APP_CALLBACK, unused here.
  */
-static void button_handle_cb(zb_uint8_t param)
+static void button_handle_cb(zb_bufid_t param)
 {
     NRF_LOG_INFO("Processing button handle: %d clicks", param);
     if(param == 2){
@@ -242,8 +236,8 @@ static void button_timer_handler(void * context)
     zb_ret_t zb_ret;
     UNUSED_PARAMETER(context);
 
-    /* Note: ZB_SCHEDULE_CALLBACK is thread safe by exception, conversely to most ZBOSS API */
-    zb_ret = ZB_SCHEDULE_CALLBACK(button_handle_cb, button_count);
+    /* Note: ZB_SCHEDULE_APP_CALLBACK is thread safe by exception, conversely to most ZBOSS API */
+    zb_ret = ZB_SCHEDULE_APP_CALLBACK(button_handle_cb, button_count);
     if (zb_ret != RET_OK)
     {
         NRF_LOG_ERROR("Button Handle Lost.");
@@ -443,28 +437,24 @@ static void illuminance_measurement_task(void *pvParam)
 
         NRF_LOG_INFO("Illumination value is: %ld", new_illumination_value);
 
-        if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 1000U) == pdTRUE)
+        if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 5) == pdTRUE)
         {
            /* Set new illuminance value as zcl attribute
             * NOTE this is not thread-safe and locking is required
             */
             zcl_status = zb_zcl_set_attr_val(LIGHT_SENSOR_ENDPOINT,
-	                                     ZB_ZCL_CLUSTER_ID_ILLUMINANCE_MEASUREMENT,
-                                             ZB_ZCL_CLUSTER_SERVER_ROLE,
-	                                     ZB_ZCL_ATTR_ILLUMINANCE_MEASUREMENT_MEASURED_VALUE_ID,
-                                             (zb_uint8_t *)&new_illumination_value,
-                                             ZB_FALSE);
-
-            UNUSED_RETURN_VALUE(xSemaphoreGiveRecursive(m_zigbee_main_task_mutex));
+	                                            ZB_ZCL_CLUSTER_ID_ILLUMINANCE_MEASUREMENT,
+                                                ZB_ZCL_CLUSTER_SERVER_ROLE,
+	                                            ZB_ZCL_ATTR_ILLUMINANCE_MEASUREMENT_MEASURED_VALUE_ID,
+                                                (zb_uint8_t *)&new_illumination_value,
+                                                ZB_FALSE);
 
             if (zcl_status != ZB_ZCL_STATUS_SUCCESS)
             {
                 NRF_LOG_INFO("Set illumination value fail. zcl_status: %d", zcl_status);
             }
-        }
-        else
-        {
-            NRF_LOG_ERROR("Unable to take zigbee_task_mutex from illumination_measurement_task");
+
+            UNUSED_RETURN_VALUE(xSemaphoreGiveRecursive(m_zigbee_main_task_mutex));
         }
         /* Let the task sleep for some time, consider it as illumination sample period  */
         vTaskDelayUntil(&last_update_wake_timestamp, pdMS_TO_TICKS(5000U));
@@ -486,53 +476,79 @@ static zb_void_t device_join(zb_uint8_t param)
  *
  * @param[in] param     Reference to ZigBee stack buffer used to pass arguments (signal).
  */
-void zboss_signal_handler(zb_uint8_t param)
+void zboss_signal_handler(zb_bufid_t param)
 {
     zb_zdo_app_signal_hdr_t  * p_sg_p      = NULL;
     zb_zdo_app_signal_type_t   sig         = zb_get_app_signal(param, &p_sg_p);
     zb_ret_t                   status      = ZB_GET_APP_SIGNAL_STATUS(param);
     zb_ret_t                   zb_err_code;
+    zb_bool_t                  comm_status;
 
     switch (sig)
     {
-    	case ZB_BDB_SIGNAL_DEVICE_REBOOT:
         case ZB_BDB_SIGNAL_DEVICE_FIRST_START:
-            if (!status == RET_OK) {
-                NRF_LOG_ERROR("Failed to join network. Status: %d", status);
-
-                zb_err_code = ZB_SCHEDULE_ALARM(device_join, 0, ZB_TIME_ONE_SECOND);
-                ZB_ERROR_CHECK(zb_err_code);
+            if (status == RET_OK) {
+              comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
+              ZB_COMM_STATUS_CHECK(comm_status);
+            } else {
+                /* Failed to initialize Zigbee stack. */
             }
-        	break;
+            break;
+
+        case ZB_BDB_SIGNAL_DEVICE_REBOOT:
+          /* fall-through */
+        case ZB_BDB_SIGNAL_STEERING:
+            if (status == RET_OK) {
+                /* Joined network successfully. */
+                /* TODO: Start application-specific logic that requires the device to be connected to a Zigbee network. */
+            } else {
+                /* Unable to join the network. Restart network steering. */
+                comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
+                ZB_COMM_STATUS_CHECK(comm_status);
+            }
+            break;
 
         case ZB_ZDO_SIGNAL_LEAVE:
             NRF_LOG_INFO("Leaving Zigbee Network");
-            zb_err_code = ZB_SCHEDULE_ALARM(device_join, 0, ZB_TIME_ONE_SECOND);
-            ZB_ERROR_CHECK(zb_err_code);
-        	break;
+            if (status == RET_OK) {
+                /* Device has left the network. */
+                /* TODO: Start application-specific logic or start network steering to join a new network. */
 
-        case ZB_COMMON_SIGNAL_CAN_SLEEP:
-            /* When freertos is used zb_sleep_now must not be used, due to
-             * zigbee communication being not the only task to be performed by node.
-             */
-            break;
+                /* This signal comes with additional data in which type of leave is stored. */
+                zb_zdo_signal_leave_params_t *leave_params = ZB_ZDO_SIGNAL_GET_PARAMS(p_sg_p, zb_zdo_signal_leave_params_t);
 
-        case ZB_ZDO_SIGNAL_PRODUCTION_CONFIG_READY:
-            if (status != RET_OK)
-            {
-                NRF_LOG_WARNING("Production config is not present or invalid");
+                switch (leave_params->leave_type) {
+                    case ZB_NWK_LEAVE_TYPE_RESET:
+                        /* Device left network without rejoining. */
+                        zb_err_code = ZB_SCHEDULE_APP_ALARM(device_join, 0, ZB_TIME_ONE_SECOND);
+                        ZB_ERROR_CHECK(zb_err_code);
+                        break;
+
+                    case ZB_NWK_LEAVE_TYPE_REJOIN:
+                        /* Device left network with rejoin. */
+                        break;
+
+                    default:
+                        /* Unrecognised leave type. */
+                        /* Device left network without rejoining. */
+                        zb_err_code = ZB_SCHEDULE_APP_ALARM(device_join, 0, ZB_TIME_ONE_SECOND);
+                        ZB_ERROR_CHECK(zb_err_code);
+                        break;
+                }
+            } else {
+                /* Device was unable to leave network. */
             }
             break;
 
-        default:
-            /* Unhandled signal. For more information see: zb_zdo_app_signal_type_e and zb_ret_e */
-            NRF_LOG_INFO("Unhandled signal %d. Status: %d", sig, status);
+          default:
+            /* Call default signal handler. */
+            ZB_ERROR_CHECK(zigbee_default_signal_handler(param));
             break;
     }
 
     if (param)
     {
-        ZB_FREE_BUF_BY_REF(param);
+        zb_buf_free(param);
     }
 }
 
@@ -544,8 +560,10 @@ void zigbee_main_task(void *pvParameter)
 
     NRF_LOG_INFO("The zigbee_main_task started.");
 
+    zb_bdb_set_legacy_device_support(1);
+
     /* Start Zigbee Stack. */
-    err_code = zboss_start();
+    err_code = zboss_start_no_autostart();
     ZB_ERROR_CHECK(err_code);
 
     while (true){
@@ -670,17 +688,16 @@ int main(void)
     zb_set_long_address(ieee_addr);
 
     /* Set static long IEEE address. */
-    zb_set_network_ed_role(IEEE_CHANNEL_MASK);
+    zb_set_network_router_role(IEEE_CHANNEL_MASK);
+    zb_set_max_children(MAX_CHILDREN);
     zigbee_erase_persistent_storage(ERASE_PERSISTENT_CONFIG);
 
-    zb_set_ed_timeout(ED_AGING_TIMEOUT_64MIN);
     zb_set_keepalive_timeout(ZB_MILLISECONDS_TO_BEACON_INTERVAL(3000));
-    zb_set_rx_on_when_idle(ZB_FALSE);
 
     /* Initialize application context structure. */
     UNUSED_RETURN_VALUE(ZB_MEMSET(&m_dev_ctx, 0, sizeof(m_dev_ctx)));
 
-    /* Register temperature sensor device context (endpoints). */
+    /* Register illuminance sensor device context (endpoints). */
     ZB_AF_REGISTER_DEVICE_CTX(&light_sensor_ctx);
 
     /* Initialize sensor device attibutes */
@@ -728,7 +745,6 @@ int main(void)
    /* Create Timer for executing button action */
     error_code = app_timer_create(&button_timer, APP_TIMER_MODE_REPEATED, button_timer_handler);
     APP_ERROR_CHECK(error_code);
-
 
     /* Start FreeRTOS scheduler. */
     NRF_LOG_INFO("Starting FreeRTOS scheduler");
