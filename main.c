@@ -80,8 +80,8 @@
  */
 static const nrf_drv_twi_t m_twi_master = NRF_DRV_TWI_INSTANCE(MASTER_TWI_INST);
 
-#define MAX_CHILDREN                       10
-#define IEEE_CHANNEL_MASK                  0x7FFF800		                        /**< Scan all channel to find the coordinator. */
+#define MAX_CHILDREN                       5
+#define IEEE_CHANNEL_MASK                  0x7FFF800		                    /**< Scan all channel to find the coordinator. */
 #define ERASE_PERSISTENT_CONFIG            ZB_FALSE                             /**< Do not erase NVRAM to save the network parameters after device reboot or power-off. */
 
 #define ZIGBEE_NETWORK_STATE_LED           BSP_BOARD_LED_0                      /**< Joined, Joing, Failed Join */
@@ -208,7 +208,7 @@ static void blink_sensitivity(){
  *
  * @param param[in]     Parameter passed t ZB_SCHEDULE_APP_CALLBACK, unused here.
  */
-static void button_handle_cb(zb_bufid_t param)
+static void button_handle_cb(zb_uint8_t param)
 {
     NRF_LOG_INFO("Processing button handle: %d clicks", param);
     if(param == 2){
@@ -405,10 +405,13 @@ static void board_init(void)
  */
 static void illuminance_measurement_task(void *pvParam)
 {
+    UNUSED_PARAMETER(pvParam);
+
     NRF_LOG_INFO("The illuminance_measurement_task started.");
 
+    zb_zcl_status_t zcl_status;
+    zb_uint16_t new_illumination_value;
     TickType_t  last_update_wake_timestamp;
-    last_update_wake_timestamp = xTaskGetTickCount();
 
     uint8_t signature = tsl2561_read_id(&m_twi_master);
     if(signature == 0x50){
@@ -419,11 +422,11 @@ static void illuminance_measurement_task(void *pvParam)
         NRF_LOG_ERROR("Digital Light Sensor TSL2561 not found!");
     }
 
+    last_update_wake_timestamp = xTaskGetTickCount();
+
     while (true)
     {
-        zb_zcl_status_t zcl_status;
-        zb_uint16_t new_illumination_value;
-
+        vTaskSuspendAll();
         /* Get new pressure measured value */
         if(tsl2561_read_lux(&m_twi_master, (uint16_t*)&new_illumination_value) != TSL2561_LUX_ERROR_NOERROR){
             new_illumination_value = MAX_ILLUMINANCE;
@@ -436,8 +439,9 @@ static void illuminance_measurement_task(void *pvParam)
         if(new_illumination_value <= 1) new_illumination_value = 0;
 
         NRF_LOG_INFO("Illumination value is: %ld", new_illumination_value);
+        UNUSED_RETURN_VALUE(xTaskResumeAll());
 
-        if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 5) == pdTRUE)
+        if (xSemaphoreTakeRecursive(m_zigbee_main_task_mutex, 1000U) == pdTRUE)
         {
            /* Set new illuminance value as zcl attribute
             * NOTE this is not thread-safe and locking is required
@@ -449,16 +453,26 @@ static void illuminance_measurement_task(void *pvParam)
                                                 (zb_uint8_t *)&new_illumination_value,
                                                 ZB_FALSE);
 
+            UNUSED_RETURN_VALUE(xSemaphoreGiveRecursive(m_zigbee_main_task_mutex));
+
             if (zcl_status != ZB_ZCL_STATUS_SUCCESS)
             {
                 NRF_LOG_INFO("Set illumination value fail. zcl_status: %d", zcl_status);
             }
 
-            UNUSED_RETURN_VALUE(xSemaphoreGiveRecursive(m_zigbee_main_task_mutex));
         }
         /* Let the task sleep for some time, consider it as illumination sample period  */
         vTaskDelayUntil(&last_update_wake_timestamp, pdMS_TO_TICKS(5000U));
     }
+}
+
+static zb_void_t device_join(zb_uint8_t param)
+{
+    UNUSED_PARAMETER(param);
+    
+    zb_bool_t comm_status;
+    comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
+    ZB_COMM_STATUS_CHECK(comm_status);
 }
 
 static void light_sensor_leave_and_join( zb_uint8_t param )
@@ -466,12 +480,6 @@ static void light_sensor_leave_and_join( zb_uint8_t param )
     zb_bdb_reset_via_local_action(param);
 }
 
-static zb_void_t device_join(zb_uint8_t param)
-{
-    zb_bool_t comm_status;
-    comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
-    ZB_COMM_STATUS_CHECK(comm_status);
-}
 /**@brief ZigBee stack event handler.
  *
  * @param[in] param     Reference to ZigBee stack buffer used to pass arguments (signal).
@@ -498,13 +506,14 @@ void zboss_signal_handler(zb_bufid_t param)
         case ZB_BDB_SIGNAL_DEVICE_REBOOT:
           /* fall-through */
         case ZB_BDB_SIGNAL_STEERING:
+            ZB_ERROR_CHECK(zigbee_default_signal_handler(param));
             if (status == RET_OK) {
                 /* Joined network successfully. */
                 /* TODO: Start application-specific logic that requires the device to be connected to a Zigbee network. */
             } else {
                 /* Unable to join the network. Restart network steering. */
-                comm_status = bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
-                ZB_COMM_STATUS_CHECK(comm_status);
+                zb_err_code = ZB_SCHEDULE_APP_ALARM(device_join, 0, ZB_TIME_ONE_SECOND);
+                ZB_ERROR_CHECK(zb_err_code);
             }
             break;
 
@@ -721,15 +730,15 @@ int main(void)
         APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
     }
 
-    rtos_result = xTaskCreate(illuminance_measurement_task, "LUX", ILLUMINANCE_MEASUREMENT_TASK_STACK_SIZE,
-            NULL, ILLUMINANCE_MEASUREMENT_TASK_PRIORITY, &m_illuminance_measurement_task_handle);
-    if (rtos_result != pdPASS)
+    m_zigbee_main_task_mutex = xSemaphoreCreateRecursiveMutex();
+    if (m_zigbee_main_task_mutex == NULL)
     {
         APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
     }
 
-    m_zigbee_main_task_mutex = xSemaphoreCreateRecursiveMutex();
-    if (m_zigbee_main_task_mutex == NULL)
+    rtos_result = xTaskCreate(illuminance_measurement_task, "LUX", ILLUMINANCE_MEASUREMENT_TASK_STACK_SIZE,
+            NULL, ILLUMINANCE_MEASUREMENT_TASK_PRIORITY, &m_illuminance_measurement_task_handle);
+    if (rtos_result != pdPASS)
     {
         APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
     }

@@ -85,7 +85,7 @@
 // <i> 802.15.4 channel used by ZigBee. Defaults to 16.
 
 #ifndef ZIGBEE_CHANNEL
-#define ZIGBEE_CHANNEL 14
+#define ZIGBEE_CHANNEL 20
 #endif
 
 // <o> ZIGBEE_TRACE_LEVEL - Trace level of Zigbee stack logs.  <0-4>
@@ -137,7 +137,7 @@
 
 // <s> ZIGBEE_MAIN_TASK_STACK_SIZE - Stack size of Zigbee FreeRTOS task. This is the task zboss_main_loop_iteration is called from
 #ifndef ZIGBEE_MAIN_TASK_STACK_SIZE
-#define ZIGBEE_MAIN_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 200U)
+#define ZIGBEE_MAIN_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 400U)
 #endif
 
 // <o> ZIGBEE_VENDOR_OUI - A decimal value that represents MAC Address Block Large (MA-L, formerly called Organizationally Unique Identifier, or OUI), a part of the device's EUI-64 address.
@@ -1668,7 +1668,7 @@
 // <e> NRF_LOG_ENABLED - nrf_log - Logger
 //==========================================================
 #ifndef NRF_LOG_ENABLED
-#define NRF_LOG_ENABLED 1
+#define NRF_LOG_ENABLED 0
 #endif
 // <h> Log message pool - Configuration of log message pool
 
