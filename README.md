@@ -22,8 +22,8 @@ Anyway, porting it to any other nrf52840 board should not be a big deal.
 
 1. Download Nordic nRF5 SDK\
 https://www.nordicsemi.com/Software-and-Tools/Software/nRF5-SDK-for-Thread-and-Zigbee
-2. Patching Nordic nRF5 SDK to support sparkfun board
-	Inside this github project you will find a folder named "patch" with two files:
+2. Patching Nordic nRF5 SDK to support sparkfun board<br>
+	Inside this github project you will find a folder named "patch" with two files:<br>
 	1. The boards.h.patch is a patch to the original boards.h located at `<nRF SDK root>/components/boards`.
 	2. The sparkfun_nrf52840_mini.h file must be copyed to the same folter.
 3. Create a projects folder inside the SDK root dir, at the same level that the example folder is.
